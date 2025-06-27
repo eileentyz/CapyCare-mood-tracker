@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Capy</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Chat with Capy ʚଓ </h2>
+            <button id="logout-btn" class="btn">Logout</button>
+        </div>
+        <div id="chat-box" class="chat-box">
+            <!-- Chat messages will be appended here -->
+        </div>
+        <div class="chat-input-area">
+            <div class="input-icons">
+                <button class="icon-btn" id="history-icon-btn" title="View Mood History"><span>📊</span></button>
+                <button class="icon-btn" id="tips-icon-btn" title="Mental Health Tips"><span>💡</span></button>
+                <button class="icon-btn" title="Emoji"><span>😊</span></button>
+            </div>
+            <input type="text" id="user-input" placeholder="Enter your message..." autocomplete="off">
+            <button id="send-btn" class="send-btn" title="Send">
+                <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="url(#blue-gradient)"/><polygon points="10,8 20,14 10,20" fill="#fff"/></svg>
+            </button>
+        </div>
+    </div>
+    <svg width="0" height="0">
+      <defs>
+        <linearGradient id="blue-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#3b82f6"/>
+          <stop offset="100%" stop-color="#06b6d4"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="gemini-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 

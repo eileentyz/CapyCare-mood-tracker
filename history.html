@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood History - CapyCare</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="history-container">
+        <div class="history-header">
+            <h1>Your Mood Journey 📊</h1>
+            <button id="back-btn" class="btn">Back to Chat</button>
+        </div>
+        
+        <div class="history-content">
+            <div class="chart-section">
+                <h2>Mood Trends</h2>
+                <div class="chart-container">
+                    <canvas id="moodChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <h2>Mood Insights</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Most Common Mood</h3>
+                        <p id="most-common-mood">Loading...</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Entries</h3>
+                        <p id="total-entries">Loading...</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>This Week</h3>
+                        <p id="this-week">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="recent-moods">
+                <h2>Recent Moods</h2>
+                <div id="recent-moods-list">
+                    <!-- Recent moods will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="history.js"></script>
+</body>
+</html> 
