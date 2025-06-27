@@ -1,2 +1,14 @@
-// Get API key from environment variable or prompt user
-window.geminiApiKey = process.env.GEMINI_API_KEY || prompt("Please enter your Gemini API key:");
+// Option 1: Direct API key (replace with your actual key)
+window.geminiApiKey = "AIzaSyDBe7Yl5O8qrGsf1NZXMVBcchb10zqbkC4";
+
+// Option 2: Check localStorage first, then prompt user if not found
+// Uncomment the lines below if you want users to enter their own API key
+/*
+if (!localStorage.getItem('geminiApiKey')) {
+    const apiKey = prompt("Please enter your Gemini API key to use CapyCare:");
+    if (apiKey) {
+        localStorage.setItem('geminiApiKey', apiKey);
+    }
+}
+window.geminiApiKey = localStorage.getItem('geminiApiKey') || "AIzaSyDBe7Yl5O8qrGsf1NZXMVBcchb10zqbkC4";
+*/

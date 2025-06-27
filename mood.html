@@ -10,16 +10,17 @@
     <div class="chat-container">
         <div class="chat-header">
             <h2>Chat with Capy ʚଓ </h2>
-            <button id="logout-btn" class="btn">Logout</button>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+                <button id="logout-btn" class="btn" style="margin: 0;">Logout</button>
+                <button id="clear-chat-btn" class="btn" style="margin: 0;">Clear Chat</button>
+            </div>
         </div>
         <div id="chat-box" class="chat-box">
             <!-- Chat messages will be appended here -->
         </div>
         <div class="chat-input-area">
             <div class="input-icons">
-                <button class="icon-btn" id="history-icon-btn" title="View Mood History"><span>📊</span></button>
                 <button class="icon-btn" id="tips-icon-btn" title="Mental Health Tips"><span>💡</span></button>
-                <button class="icon-btn" title="Emoji"><span>😊</span></button>
             </div>
             <input type="text" id="user-input" placeholder="Enter your message..." autocomplete="off">
             <button id="send-btn" class="send-btn" title="Send">
