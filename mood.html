@@ -5,37 +5,501 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat with Capy</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(120deg, #fdf6e3 0%, #f6e7b4 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .app-container {
+            display: flex;
+            height: 100vh;
+            background: #f5f5f5;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .main-frame {
+            display: flex;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: 0 10px 40px rgba(245, 158, 11, 0.15);
+            overflow: hidden;
+            height: calc(100vh - 40px);
+            max-height: 900px;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: transparent;
+            border-right: 1px solid #fde68a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 100%;
+        }
+        
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #fde68a;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+            height: 80px;
+            box-sizing: border-box;
+        }
+        
+        .sidebar-header img {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .sidebar-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .new-chat-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+        }
+        
+        .new-chat-btn:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .new-chat-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            background: transparent;
+        }
+        
+        .chat-item {
+            padding: 10px 12px;
+            margin: 3px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #64748b;
+            position: relative;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+        
+        .chat-item:hover {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: #f59e0b;
+            transform: translateX(2px);
+        }
+        
+        .chat-item.active {
+            background: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+            border-color: #f59e0b;
+        }
+        
+        .chat-item-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .chat-item-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .chat-item-title {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: inherit;
+        }
+        
+        .chat-item-meta {
+            font-size: 11px;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .chat-item.active .chat-item-meta {
+            color: #f59e0b;
+        }
+        
+        .delete-session-btn {
+            background: none;
+            border: none;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+        
+        .chat-item:hover .delete-session-btn {
+            opacity: 1;
+        }
+        
+        .delete-session-btn:hover {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+        
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+            flex-shrink: 0;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border-top: none;
+            background: transparent;
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f59e0b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+        }
+        
+        .user-name {
+            font-size: 13px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+        
+        .logout-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            color: #475569;
+            border-color: #cbd5e1;
+        }
+        
+        .main-content,
+        .chat-container {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: transparent;
+            max-height: calc(100vh - 258px);
+            padding-bottom: 56px;
+        }
+        .chat-input-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px 0 28px 0;
+            border-top: 1px solid #fde68a;
+            background: transparent;
+            min-height: 60px;
+            z-index: 10;
+        }
+        
+        .input-container {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .input-icons {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        
+        .icon-btn:hover {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #f59e0b;
+        }
+        
+        #user-input {
+            flex: 1;
+            max-width: 220px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            background: #f8fafc;
+            color: #1e293b;
+            transition: all 0.2s;
+        }
+        
+        #user-input:focus {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, #ffffff, #fef3c7);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+        
+        .send-btn {
+            margin-right: 16px;
+            margin-left: 16px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        
+        .send-btn:hover {
+            background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+        
+        .send-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 10px;
+            }
+            
+            .main-frame {
+                height: calc(100vh - 20px);
+                max-width: none;
+            }
+            
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s;
+                border-radius: 0;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                background: none;
+                border: none;
+                font-size: 20px;
+                cursor: pointer;
+                padding: 10px;
+                color: #64748b;
+                border-radius: 6px;
+                transition: all 0.2s;
+            }
+            
+            .mobile-menu-btn:hover {
+                background: #f1f5f9;
+            }
+            
+            .chat-header {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+            
+            .chat-header h2 {
+                flex: 1;
+                margin: 0;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 10px;
+            color: #64748b;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .mobile-menu-btn:hover {
+            background: #f1f5f9;
+        }
+        
+        .chat-header {
+            background: white;
+        }
+        
+        .clear-chat-btn {
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(100, 116, 139, 0.10);
+        }
+        .clear-chat-btn:hover {
+            background: #9ca3af;
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(100, 116, 139, 0.15);
+        }
+    </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <h2>Chat with Capy ʚଓ </h2>
-            <div style="display: flex; flex-direction: column; gap: 3px;">
-                <button id="logout-btn" class="btn" style="margin: 0;">Logout</button>
-                <button id="clear-chat-btn" class="btn" style="margin: 0;">Clear Chat</button>
+    <div class="app-container">
+        <div class="main-frame">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <button class="new-chat-btn" id="new-chat-btn"> New chat</button>
+                </div>
+                <div class="chat-history">
+                    <!-- Chat sessions will be dynamically added here -->
+                </div>
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <div class="user-avatar" id="user-avatar">U</div>
+                        <div class="user-name" id="user-name">User</div>
+                    </div>
+                    <button class="logout-btn" id="logout-btn">Logout</button>
+                </div>
+            </aside>
+            <div class="main-content">
+                <section class="chat-container">
+                    <div class="chat-header">
+                        <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+                        <h2 id="current-chat-title">CapyCare</h2>
+                        <div class="header-actions">
+                            <button class="clear-chat-btn" id="clear-chat-btn">Clear Chat</button>
+                        </div>
+                    </div>
+                    <div id="chat-box" class="chat-box">
+                        <!-- Chat messages will be appended here -->
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="input-container">
+                            <div class="input-icons">
+                                <button class="icon-btn" id="tips-icon-btn" title="Mental Health Tips"><span>💡</span></button>
+                            </div>
+                            <input type="text" id="user-input" placeholder="Enter your message..." autocomplete="off">
+                            <button id="send-btn" class="send-btn" title="Send">
+                                <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="url(#yellow-gradient)"/><polygon points="10,8 20,14 10,20" fill="#fff"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </section>
             </div>
-        </div>
-        <div id="chat-box" class="chat-box">
-            <!-- Chat messages will be appended here -->
-        </div>
-        <div class="chat-input-area">
-            <div class="input-icons">
-                <button class="icon-btn" id="tips-icon-btn" title="Mental Health Tips"><span>💡</span></button>
-            </div>
-            <input type="text" id="user-input" placeholder="Enter your message..." autocomplete="off">
-            <button id="send-btn" class="send-btn" title="Send">
-                <svg width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="14" fill="url(#blue-gradient)"/><polygon points="10,8 20,14 10,20" fill="#fff"/></svg>
-            </button>
         </div>
     </div>
+    
     <svg width="0" height="0">
       <defs>
-        <linearGradient id="blue-gradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#3b82f6"/>
-          <stop offset="100%" stop-color="#06b6d4"/>
+        <linearGradient id="yellow-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fbbf24"/>
+          <stop offset="100%" stop-color="#f59e0b"/>
         </linearGradient>
       </defs>
     </svg>
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>

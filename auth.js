@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then((userCredential) => {
                     // Signed in 
                     console.log('Signed up:', userCredential.user);
+                    
+                    // Store user info in localStorage
+                    const userInfo = {
+                        email: userCredential.user.email,
+                        uid: userCredential.user.uid
+                    };
+                    localStorage.setItem('capycare_user', JSON.stringify(userInfo));
+                    localStorage.setItem('capycare_last_login', Date.now().toString());
                     window.location.href = 'mood.html';
                 })
                 .catch((error) => {
@@ -50,6 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then((userCredential) => {
                     // Signed in
                     console.log('Logged in:', userCredential.user);
+                    
+                    // Store user info in localStorage
+                    const userInfo = {
+                        email: userCredential.user.email,
+                        uid: userCredential.user.uid
+                    };
+                    localStorage.setItem('capycare_user', JSON.stringify(userInfo));
+                    localStorage.setItem('capycare_last_login', Date.now().toString());
                     window.location.href = 'mood.html';
                 })
                 .catch((error) => {

@@ -2,54 +2,237 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
+    const newChatBtn = document.getElementById('new-chat-btn');
     const logoutBtn = document.getElementById('logout-btn');
-
-    let user;
-    let conversationHistory = [];
-    let currentMood = 'default'; // Track the current mood for styling
-
-    // Load saved chat history from localStorage
-    function loadChatHistory() {
-        const savedHistory = localStorage.getItem('capycare_chat_history');
-        if (savedHistory) {
-            try {
-                const parsedHistory = JSON.parse(savedHistory);
-                conversationHistory = parsedHistory.conversationHistory || [];
-                currentMood = parsedHistory.currentMood || 'default';
-                
-                // Restore chat messages to the UI
-                if (parsedHistory.messages && parsedHistory.messages.length > 0) {
-                    chatBox.innerHTML = ''; // Clear existing messages
-                    parsedHistory.messages.forEach(msg => {
-                        addMessageToUI(msg.sender, msg.text, msg.isHtml, msg.mood);
-                    });
-                    console.log('Chat history loaded from localStorage');
-                    return true; // Indicate that history was loaded
-                }
-            } catch (error) {
-                console.error('Error loading chat history:', error);
-                // If there's an error, start fresh
-                conversationHistory = [];
-                currentMood = 'default';
-            }
-        }
-        return false; // Indicate that no history was loaded
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.getElementById('sidebar');
+    
+    // Check if user just logged in and create new chat
+    checkForNewLogin();
+    
+    // Initialize chat sessions
+    initializeChatSessions();
+    
+    // Load saved chat messages from localStorage
+    loadChatHistory();
+    
+    // Update user info display
+    updateUserInfo();
+    
+    // Add support button to interface
+    addSupportButton();
+    
+    // Add event listeners
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', startNewChat);
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', clearCurrentChat);
     }
 
-    // Save chat history to localStorage
-    function saveChatHistory() {
-        try {
-            // Get all current messages from the chat box
-            const messages = [];
-            const messageElements = chatBox.querySelectorAll('.chat-message');
+    // Add event listener for mental health tips button
+    const tipsBtn = document.getElementById('tips-icon-btn');
+    if (tipsBtn) {
+        tipsBtn.addEventListener('click', showMentalHealthTips);
+    }
+
+    // Mobile menu button
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    }
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768) {
+            if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                sidebar.classList.remove('open');
+            }
+        }
+    });
+});
+
+// Check if user just logged in and create new chat
+function checkForNewLogin() {
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const lastLoginTime = localStorage.getItem('capycare_last_login');
+    const currentTime = Date.now();
+    
+    // If user exists and this is a fresh login (within last 5 seconds or no previous login)
+    if (user.email && (!lastLoginTime || (currentTime - parseInt(lastLoginTime)) < 5000)) {
+        // Create a new session
+        const newSession = {
+            id: generateSessionId(),
+            title: 'New Chat',
+            timestamp: currentTime,
+            messages: []
+        };
+        // Get existing sessions and add the new one
+        const existingSessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+        existingSessions.unshift(newSession); // Add new session at the beginning
+        localStorage.setItem('capycare_sessions', JSON.stringify(existingSessions));
+        localStorage.setItem('capycare_current_session', newSession.id);
+        localStorage.setItem('capycare_last_login', currentTime.toString());
+        // Clear chat box and show welcome message
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox) {
+            chatBox.innerHTML = '';
+            addMessageToUI('bot', getWelcomeMessage());
+        }
+        // Update chat title
+        const chatTitle = document.getElementById('current-chat-title');
+        if (chatTitle) {
+            chatTitle.textContent = 'New Chat';
+        }
+        // Update the sessions list in sidebar
+        updateSessionsList();
+        showNotification('Welcome back! New chat session created. 🦫', 'success');
+    }
+}
+
+// Initialize chat sessions management
+function initializeChatSessions() {
+    // Get or create sessions array
+    let sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    
+    // If no sessions exist, create a default one
+    if (sessions.length === 0) {
+        const defaultSession = {
+            id: generateSessionId(),
+            title: 'New Chat',
+            timestamp: Date.now(),
+            messages: []
+        };
+        sessions = [defaultSession];
+        localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+    }
+    
+    // Set current session to the most recent one
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) {
+        localStorage.setItem('capycare_current_session', sessions[0].id);
+    }
+    
+    updateSessionsList();
+}
+
+// Generate unique session ID
+function generateSessionId() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Update the sessions list in the sidebar
+function updateSessionsList() {
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    
+    // Find or create chat history container
+    let chatHistory = document.querySelector('.chat-history');
+    if (!chatHistory) {
+        chatHistory = document.createElement('div');
+        chatHistory.className = 'chat-history';
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarHeader = document.querySelector('.sidebar-header');
+        sidebar.insertBefore(chatHistory, sidebarHeader.nextSibling);
+    }
+    
+    chatHistory.innerHTML = '';
+    
+    sessions.forEach(session => {
+        const chatItem = document.createElement('div');
+        chatItem.className = `chat-item ${session.id === currentSessionId ? 'active' : ''}`;
+        
+        // Calculate message count
+        const messageCount = session.messages ? session.messages.length : 0;
+        const userMessageCount = session.messages ? session.messages.filter(msg => msg.sender === 'user').length : 0;
+        
+        // Format timestamp
+        const timestamp = new Date(session.timestamp).toLocaleDateString();
+        
+        chatItem.innerHTML = `
+            <span class="chat-item-icon">💬</span>
+            <div class="chat-item-content">
+                <span class="chat-item-title">${session.title}</span>
+                <span class="chat-item-meta">${userMessageCount} messages • ${timestamp}</span>
+            </div>
+            <button class="delete-session-btn" data-session-id="${session.id}" title="Delete chat">×</button>
+        `;
+        
+        chatItem.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('delete-session-btn')) {
+                switchToSession(session.id);
+            }
+        });
+        
+        chatHistory.appendChild(chatItem);
+    });
+    
+    // Add delete session event listeners
+    document.querySelectorAll('.delete-session-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSession(btn.dataset.sessionId);
+        });
+    });
+}
+
+// Switch to a specific chat session
+function switchToSession(sessionId) {
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const session = sessions.find(s => s.id === sessionId);
+    
+    if (session) {
+        // Save current session before switching
+        saveCurrentSession();
+        
+        // Switch to new session
+        localStorage.setItem('capycare_current_session', sessionId);
+        
+        // Load session messages
+        loadSessionMessages(session);
+        
+        // Update UI
+        updateSessionsList();
+        
+        // Update chat title
+        const chatTitle = document.getElementById('current-chat-title');
+        if (chatTitle) {
+            chatTitle.textContent = session.title;
+        }
+    }
+}
+
+// Save current session messages
+function saveCurrentSession() {
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    if (!currentSessionId) return;
+    
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+    
+    if (currentSessionIndex !== -1) {
+        const chatBox = document.getElementById('chat-box');
+        const messages = [];
+        const messageElements = chatBox.querySelectorAll('.chat-message');
+        
+        messageElements.forEach(element => {
+            const isBot = element.classList.contains('bot-message');
+            const sender = isBot ? 'bot' : 'user';
+            const messageContent = element.querySelector('.message-content');
             
-            messageElements.forEach(element => {
-                const isBot = element.classList.contains('bot-message');
-                const sender = isBot ? 'bot' : 'user';
-                const text = element.innerHTML || element.textContent;
-                const isHtml = element.innerHTML !== element.textContent;
+            if (messageContent) {
+                const text = messageContent.innerHTML || messageContent.textContent;
+                const isHtml = messageContent.innerHTML !== messageContent.textContent;
                 
-                // Determine mood from bot message classes
                 let mood = 'default';
                 if (isBot) {
                     if (element.classList.contains('bot-message-happy')) mood = 'happy';
@@ -60,493 +243,640 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 messages.push({ sender, text, isHtml, mood });
-            });
-            
-            const chatData = {
-                conversationHistory,
-                currentMood,
-                messages,
-                timestamp: Date.now()
-            };
-            
-            localStorage.setItem('capycare_chat_history', JSON.stringify(chatData));
-        } catch (error) {
-            console.error('Error saving chat history:', error);
-        }
-    }
-
-    // Clear chat history
-    function clearChatHistory() {
-        localStorage.removeItem('capycare_chat_history');
-        conversationHistory = [];
-        currentMood = 'default';
-        chatBox.innerHTML = '';
-    }
-
-    const systemPrompt = `You are Capy, a friendly and empathetic capybara chatbot. Your goal is to help users feel better.
-
-    Your personality: Warm, gentle, slightly playful, and very supportive. Use simple language and occasionally use capybara-themed puns or phrases (e.g., "Let's munch on some good vibes," "You're looking capy-tivating today!").
-
-    Your tasks:
-    1.  **Understand Mood**: First, understand the user's mood from their message (e.g., happy, sad, anxious, calm, energized).
-    2.  **Detect Need for Check-in**: If a user expresses feelings of being overwhelmed, hopeless, consistently very sad, or mentions depression, prioritize this.
-    3.  **Function Call for Check-in**: If a check-in is needed, you MUST respond ONLY with the following JSON format:
-        \`\`\`json
-        {
-          "action": "suggest_check_in"
-        }
-        \`\`\`
-    4.  **Confirm and Ask for Song**: If no check-in is needed, and you identify a clear mood, confirm it with the user and ask if they'd like a song suggestion.
-    5.  **Function Call for Song**: If they say yes to a song, you MUST respond ONLY with the following JSON format:
-        \`\`\`json
-        {
-          "action": "suggest_song",
-          "mood": "DetectedMood"
-        }
-        \`\`\`
-        Replace "DetectedMood" with the mood you identified (e.g., "Happy", "Sad", "Anxious", "Calm", "Energized"). Do not include any other text outside this JSON object.
-    6.  **Chat and Advise**: If they say no to a song, or after you've suggested one, continue the conversation by offering simple, encouraging advice relevant to their mood.
-    7.  **Keep it Brief**: Keep your text responses short and conversational.
-    
-    **Disclaimer**: Always remember you are an AI, not a healthcare professional. Do not give medical advice. Your goal is to be a supportive friend.`;
-    
-    // --- Authentication ---
-    auth.onAuthStateChanged(currentUser => {
-        if (currentUser) {
-            user = currentUser;
-            // Load chat history after user is authenticated
-            const historyLoaded = loadChatHistory();
-            
-            // Only show welcome message if there's truly no conversation history
-            if (!historyLoaded && conversationHistory.length === 0) {
-                addMessage('bot', "Hi there! I'm Capy, your personal companion. It's great to see you. How are you feeling today?");
-            } else {
-                // If there's existing conversation, just scroll to bottom without adding any new messages
-                chatBox.scrollTop = chatBox.scrollHeight;
             }
-        } else {
+        });
+        
+        // Update session title based on first user message
+        let title = 'New Chat';
+        const firstUserMessage = messages.find(msg => msg.sender === 'user');
+        if (firstUserMessage) {
+            title = firstUserMessage.text.substring(0, 30) + (firstUserMessage.text.length > 30 ? '...' : '');
+        } else if (messages.length > 0) {
+            // If no user message but there are bot messages, use a generic title
+            title = 'Chat ' + new Date().toLocaleDateString();
+        }
+        
+        sessions[currentSessionIndex].messages = messages;
+        sessions[currentSessionIndex].title = title;
+        sessions[currentSessionIndex].lastUpdated = Date.now();
+        
+        localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+        
+        // Log for debugging
+        console.log('Session saved:', currentSessionId);
+        console.log('Messages saved:', messages.length);
+        console.log('Session title:', title);
+    }
+}
+
+// Load session messages
+function loadSessionMessages(session) {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = '';
+    
+    if (session.messages && session.messages.length > 0) {
+        session.messages.forEach(msg => {
+            addMessageToUI(msg.sender, msg.text, msg.isHtml, msg.mood);
+        });
+    } else {
+        // Show welcome message for new sessions
+        addMessageToUI('bot', getWelcomeMessage());
+    }
+}
+
+// Get personalized welcome message
+function getWelcomeMessage() {
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const hour = new Date().getHours();
+    
+    let greeting = 'Hello';
+    if (hour < 12) greeting = 'Good morning';
+    else if (hour < 17) greeting = 'Good afternoon';
+    else greeting = 'Good evening';
+    
+    if (user.name) {
+        return `${greeting}, ${user.name}! How are you feeling today? I'm here to chat and support you! 🦫`;
+    } else {
+        return `${greeting}! How are you feeling today? I'm here to chat and support you! 🦫`;
+    }
+}
+
+// Delete a chat session
+function deleteSession(sessionId) {
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    
+    if (sessions.length <= 1) {
+        alert('You need at least one chat session. Create a new chat first!');
+        return;
+    }
+    
+    if (confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+        const updatedSessions = sessions.filter(s => s.id !== sessionId);
+        localStorage.setItem('capycare_sessions', JSON.stringify(updatedSessions));
+        
+        // If we deleted the current session, switch to the first available one
+        if (sessionId === currentSessionId) {
+            localStorage.setItem('capycare_current_session', updatedSessions[0].id);
+            loadSessionMessages(updatedSessions[0]);
+        }
+        
+        updateSessionsList();
+    }
+}
+
+// Enhanced new chat function
+function startNewChat() {
+    // Save current session before creating new one
+    saveCurrentSession();
+    
+    // Get current sessions
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    
+    // Update the title of the current session before creating new one
+    if (currentSessionId) {
+        const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+        if (currentSessionIndex !== -1) {
+            // Update title based on first user message if it exists
+            const currentSession = sessions[currentSessionIndex];
+            if (currentSession.messages && currentSession.messages.length > 0) {
+                const firstUserMessage = currentSession.messages.find(msg => msg.sender === 'user');
+                if (firstUserMessage) {
+                    currentSession.title = firstUserMessage.text.substring(0, 30) + (firstUserMessage.text.length > 30 ? '...' : '');
+                } else {
+                    currentSession.title = 'Chat ' + new Date(currentSession.timestamp).toLocaleDateString();
+                }
+            } else {
+                currentSession.title = 'Empty Chat';
+            }
+            currentSession.lastUpdated = Date.now();
+        }
+    }
+    
+    // Create new session
+    const newSession = {
+        id: generateSessionId(),
+        title: 'New Chat',
+        timestamp: Date.now(),
+        messages: []
+    };
+    
+    // Add new session to beginning of array (most recent first)
+    sessions.unshift(newSession);
+    localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+    
+    // Switch to new session
+    localStorage.setItem('capycare_current_session', newSession.id);
+    
+    // Clear chat box and show welcome message
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = '';
+    addMessageToUI('bot', getWelcomeMessage());
+    
+    // Update UI
+    updateSessionsList();
+    
+    // Update chat title
+    const chatTitle = document.getElementById('current-chat-title');
+    if (chatTitle) {
+        chatTitle.textContent = 'New Chat';
+    }
+    
+    // Show success message with session count
+    const sessionCount = sessions.length;
+    showNotification(`New chat started! You now have ${sessionCount} chat${sessionCount > 1 ? 's' : ''} in your history 🦫`, 'success');
+    
+    // Log for debugging
+    console.log('New chat created:', newSession.id);
+    console.log('Total sessions:', sessions.length);
+    console.log('Current session:', newSession.id);
+}
+
+// Enhanced logout function
+function logout() {
+    if (confirm('Are you sure you want to logout? Your chat sessions will be saved.')) {
+        // Save current session before logout
+        saveCurrentSession();
+        
+        // Clear user data (but keep chat sessions for now)
+        localStorage.removeItem('capycare_user');
+        localStorage.removeItem('capycare_current_session');
+        
+        // Clear Firebase auth if available
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            firebase.auth().signOut().then(() => {
+                console.log('User signed out successfully');
+            }).catch((error) => {
+                console.error('Error signing out:', error);
+            });
+        }
+        
+        // Show logout message
+        showNotification('Logged out successfully! 👋', 'info');
+        
+        // Redirect to login page after a short delay
+        setTimeout(() => {
             window.location.href = 'login.html';
+        }, 1000);
+    }
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Remove existing notification
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+    `;
+    
+    // Set background color based on type
+    switch (type) {
+        case 'success':
+            notification.style.backgroundColor = '#10b981';
+            break;
+        case 'error':
+            notification.style.backgroundColor = '#ef4444';
+            break;
+        case 'warning':
+            notification.style.backgroundColor = '#f59e0b';
+            break;
+        default:
+            notification.style.backgroundColor = '#3b82f6';
+    }
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-        // Clear chat history on logout
-        clearChatHistory();
-        auth.signOut().then(() => {
-            window.location.href = 'index.html';
-        });
-    });
-
-    // Clear chat button
-    const clearChatBtn = document.getElementById('clear-chat-btn');
-    if (clearChatBtn) {
-        clearChatBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear the chat history? This cannot be undone.')) {
-                clearChatHistory();
-                addMessage('bot', "Hi there! I'm Capy, your personal companion. It's great to see you. How are you feeling today?");
-            }
-        });
-    }
-
-    // Add mental health tips icon button functionality
-    const tipsIconBtn = document.getElementById('tips-icon-btn');
-    if (tipsIconBtn) {
-        tipsIconBtn.addEventListener('click', () => {
-            addMessage('bot', `
-                <strong>Mental Health Tips:</strong><br>
-                • Take a deep breath and pause.<br>
-                • Talk to someone you trust.<br>
-                • Go for a short walk.<br>
-                • Practice gratitude.<br>
-                • If you need help, consider reaching out to a counselor or helpline.<br>
-                <a href="https://www.befrienders.org/" target="_blank" style="color:#3b82f6;">Find support near you</a>
-            `, true);
-        });
-    }
-
-    // --- Chat Logic ---
-    sendBtn.addEventListener('click', handleUserInput);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleUserInput();
-    });
-
-    async function handleUserInput() {
-        const messageText = userInput.value.trim();
-        if (messageText === '') return;
-
-        addMessage('user', messageText);
-        userInput.value = '';
-        
-        addMessageToHistory('user', messageText);
-        await getAIResponse();
-    }
-
-    async function getAIResponse() {
-        console.log("Getting AI response...");
-        const apiKey = window.geminiApiKey;
-        if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY") {
-            addMessage("bot", "It looks like the AI is not configured. Please add a valid Gemini API key in `gemini-config.js`.");
-            return;
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
         }
+    }, 3000);
+}
 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-        const requestBody = {
-            contents: conversationHistory,
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            generationConfig: {
-                // An equivalent to Temperature, but for the new models
-                "temperature": 1,
-            }
-        };
-
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.json();
-                console.error("API Error Response:", errorBody);
-                throw new Error(`API Error: ${response.status}`);
-            }
-
-            const responseData = await response.json();
-
-            if (!responseData.candidates || responseData.candidates.length === 0) {
-                 console.error("No candidates in response:", responseData);
-                 throw new Error("AI did not provide a response candidate.");
-            }
-
-            const botResponse = responseData.candidates[0].content.parts[0].text;
-            
-            addMessageToHistory('model', botResponse);
-
-            // Check if the response is a JSON action
-            let jsonResponse = null;
-            const jsonMatch = botResponse.match(/\{[\s\S]*\}/); // Find text between { and }
-
-            if (jsonMatch && jsonMatch[0]) {
-                try {
-                    jsonResponse = JSON.parse(jsonMatch[0]);
-                } catch (e) {
-                    console.error("Failed to parse potential JSON:", e);
-                    jsonResponse = null; // It wasn't valid JSON, so treat as text
-                }
-            }
-            
-            if (jsonResponse && jsonResponse.action === 'suggest_song') {
-                const mood = jsonResponse.mood;
-                currentMood = mood.toLowerCase(); // Set the mood for styling
-                addMessage('bot', `I can see you're feeling ${currentMood}. Let me find a song for you.`);
-                await findAndPlaySong(mood);
-            } else if (jsonResponse && jsonResponse.action === 'suggest_check_in') {
-                currentMood = 'sad'; // Use 'sad' styling for check-ins
-                addMessage('bot', "It sounds like things are really tough right now. Sometimes, talking to someone can make a world of difference.");
-                addMessage('bot', "Remember, it's okay to ask for help. You can connect with people who can support you by calling or texting 988 in the US and Canada, or by visiting the [988 Lifeline website](https://988lifeline.org/). You're not alone in this.", true);
-            } else {
-                // Not a JSON action, or parsing failed, so it's a regular chat message
-                addMessage('bot', botResponse);
-            }
-
-        } catch (error) {
-            console.error("AI Error:", error);
-            addMessage("bot", "I'm having a little trouble thinking right now. Please try again in a moment.");
+// Load chat history from localStorage (updated for session management)
+function loadChatHistory() {
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    if (!currentSessionId) {
+        initializeChatSessions();
+        return;
+    }
+    
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSession = sessions.find(s => s.id === currentSessionId);
+    
+    if (currentSession) {
+        loadSessionMessages(currentSession);
+        
+        // Update chat title
+        const chatTitle = document.getElementById('current-chat-title');
+        if (chatTitle) {
+            chatTitle.textContent = currentSession.title;
         }
-    }
-
-    async function findAndPlaySong(mood) {
-        // Curated song recommendations with playable sources
-        const songRecommendations = {
-            happy: [
-                { 
-                    title: "Happy", 
-                    artist: "Pharrell Williams", 
-                    genre: "Pop",
-                    youtubeId: "ZbZSe6N_BXs",
-                    spotifyUrl: "https://open.spotify.com/track/60nZcImufyMA1MKQY3dcCH"
-                },
-                { 
-                    title: "Good Life", 
-                    artist: "OneRepublic", 
-                    genre: "Pop Rock",
-                    youtubeId: "h-pFUljFVeM",
-                    spotifyUrl: "https://open.spotify.com/track/5EciRz1TbGxRvlJ9Cy2Gre"
-                },
-                { 
-                    title: "Walking on Sunshine", 
-                    artist: "Katrina & The Waves", 
-                    genre: "Pop",
-                    youtubeId: "iPUmE-tne5U",
-                    spotifyUrl: "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0"
-                },
-                { 
-                    title: "Don't Stop Believin'", 
-                    artist: "Journey", 
-                    genre: "Rock",
-                    youtubeId: "1k8craCGp9U",
-                    spotifyUrl: "https://open.spotify.com/track/4bHsxqR3GMrXTxEPL5vYe1"
-                },
-                { 
-                    title: "I Gotta Feeling", 
-                    artist: "The Black Eyed Peas", 
-                    genre: "Pop",
-                    youtubeId: "uSD4vsh1zBA",
-                    spotifyUrl: "https://open.spotify.com/track/2H1047e0oMSj10dgp7p2VG"
+    } else {
+        // Fallback to old method for backward compatibility
+        const chatBox = document.getElementById('chat-box');
+        const savedMessages = localStorage.getItem('capycare_chat_messages');
+        
+        if (savedMessages) {
+            try {
+                const messages = JSON.parse(savedMessages);
+                chatBox.innerHTML = '';
+                if (messages.length === 0) {
+                    addMessageToUI('bot', getWelcomeMessage());
+                } else {
+                    messages.forEach(msg => {
+                        addMessageToUI(msg.sender, msg.text, msg.isHtml, msg.mood);
+                    });
                 }
-            ],
-            sad: [
-                { 
-                    title: "Fix You", 
-                    artist: "Coldplay", 
-                    genre: "Alternative Rock",
-                    youtubeId: "k4V3Mo61fJM",
-                    spotifyUrl: "https://open.spotify.com/track/7LVHVU3tWfcxj5aiPFEW4Q"
-                },
-                { 
-                    title: "The Scientist", 
-                    artist: "Coldplay", 
-                    genre: "Alternative Rock",
-                    youtubeId: "RB-RcX5DS5A",
-                    spotifyUrl: "https://open.spotify.com/track/75JFxkI2RXiU7L9VXzMkle"
-                },
-                { 
-                    title: "Mad World", 
-                    artist: "Gary Jules", 
-                    genre: "Alternative",
-                    youtubeId: "4N3N1MlvVc4",
-                    spotifyUrl: "https://open.spotify.com/track/3JOVTaI5DrKJmbyfcGX1y2"
-                },
-                { 
-                    title: "Everybody Hurts", 
-                    artist: "R.E.M.", 
-                    genre: "Alternative Rock",
-                    youtubeId: "ijZRCIrTgQc",
-                    spotifyUrl: "https://open.spotify.com/track/4tCWPkNm9Dx1x52v65aByu"
-                },
-                { 
-                    title: "Hallelujah", 
-                    artist: "Jeff Buckley", 
-                    genre: "Folk Rock",
-                    youtubeId: "y8AWFf7EAc4",
-                    spotifyUrl: "https://open.spotify.com/track/3pRaLNL3b8x5uBOcsSVvdT"
-                }
-            ],
-            anxious: [
-                { 
-                    title: "Weightless", 
-                    artist: "Marconi Union", 
-                    genre: "Ambient",
-                    youtubeId: "UfcAVejslrU",
-                    spotifyUrl: "https://open.spotify.com/track/3r8RuvgbX9s7ammBn07D3W"
-                },
-                { 
-                    title: "Claire de Lune", 
-                    artist: "Debussy", 
-                    genre: "Classical",
-                    youtubeId: "CvFH_6DNRCY",
-                    spotifyUrl: "https://open.spotify.com/track/0QqjruHZtBmzJ5d5HnUjE5"
-                },
-                { 
-                    title: "River Flows in You", 
-                    artist: "Yiruma", 
-                    genre: "Piano",
-                    youtubeId: "7maJOI3QMu0",
-                    spotifyUrl: "https://open.spotify.com/track/2qpsUQ1Gz9Zmi7OftCaKzE"
-                },
-                { 
-                    title: "Gymnopedie No. 1", 
-                    artist: "Erik Satie", 
-                    genre: "Classical",
-                    youtubeId: "S-Xm7s9eGxU",
-                    spotifyUrl: "https://open.spotify.com/track/6uVJEdPkrJ7exb7Tg4zNAf"
-                },
-                { 
-                    title: "The Sound of Silence", 
-                    artist: "Disturbed", 
-                    genre: "Rock",
-                    youtubeId: "u9Dg-g7t2l4",
-                    spotifyUrl: "https://open.spotify.com/track/1j8z4TTjJ1YOdoFEDwJTQa"
-                }
-            ],
-            calm: [
-                { 
-                    title: "Weightless", 
-                    artist: "Marconi Union", 
-                    genre: "Ambient",
-                    youtubeId: "UfcAVejslrU",
-                    spotifyUrl: "https://open.spotify.com/track/3r8RuvgbX9s7ammBn07D3W"
-                },
-                { 
-                    title: "Claire de Lune", 
-                    artist: "Debussy", 
-                    genre: "Classical",
-                    youtubeId: "CvFH_6DNRCY",
-                    spotifyUrl: "https://open.spotify.com/track/0QqjruHZtBmzJ5d5HnUjE5"
-                },
-                { 
-                    title: "River Flows in You", 
-                    artist: "Yiruma", 
-                    genre: "Piano",
-                    youtubeId: "7maJOI3QMu0",
-                    spotifyUrl: "https://open.spotify.com/track/2qpsUQ1Gz9Zmi7OftCaKzE"
-                },
-                { 
-                    title: "Gymnopedie No. 1", 
-                    artist: "Erik Satie", 
-                    genre: "Classical",
-                    youtubeId: "S-Xm7s9eGxU",
-                    spotifyUrl: "https://open.spotify.com/track/6uVJEdPkrJ7exb7Tg4zNAf"
-                },
-                { 
-                    title: "The Sound of Silence", 
-                    artist: "Disturbed", 
-                    genre: "Rock",
-                    youtubeId: "u9Dg-g7t2l4",
-                    spotifyUrl: "https://open.spotify.com/track/1j8z4TTjJ1YOdoFEDwJTQa"
-                }
-            ],
-            energized: [
-                { 
-                    title: "Eye of the Tiger", 
-                    artist: "Survivor", 
-                    genre: "Rock",
-                    youtubeId: "btPJPFnesV4",
-                    spotifyUrl: "https://open.spotify.com/track/2HHtWyy5CgaQbC7XSoOb0e"
-                },
-                { 
-                    title: "We Will Rock You", 
-                    artist: "Queen", 
-                    genre: "Rock",
-                    youtubeId: "-tJYN-eG1zk",
-                    spotifyUrl: "https://open.spotify.com/track/54flyrjcdnQdco7300avMJ"
-                },
-                { 
-                    title: "Stronger", 
-                    artist: "Kanye West", 
-                    genre: "Hip Hop",
-                    youtubeId: "PsO6ZnUZI0g",
-                    spotifyUrl: "https://open.spotify.com/track/0fBWpe93ON8CqvuobxEk9R"
-                },
-                { 
-                    title: "Lose Yourself", 
-                    artist: "Eminem", 
-                    genre: "Hip Hop",
-                    youtubeId: "xFYQQPAOz7Y",
-                    spotifyUrl: "https://open.spotify.com/track/5Z01UMMf7V1o0MzF86s6WJ"
-                },
-                { 
-                    title: "Thunderstruck", 
-                    artist: "AC/DC", 
-                    genre: "Rock",
-                    youtubeId: "v2AC41dglnM",
-                    spotifyUrl: "https://open.spotify.com/track/57bgtoPSgt236HzfBOd8kj"
-                }
-            ]
-        };
-
-        const moodLower = mood.toLowerCase();
-        const songs = songRecommendations[moodLower] || songRecommendations.happy;
-        const randomSong = songs[Math.floor(Math.random() * songs.length)];
-        
-        // Create message with song info
-        addMessage('bot', `How about "${randomSong.title}" by ${randomSong.artist}? It's a great ${randomSong.genre} song that might match your ${mood} mood! 🎵`);
-        
-        // Create music player container
-        const playerContainer = document.createElement('div');
-        playerContainer.classList.add('chat-message', 'bot-message', 'music-player-container');
-        playerContainer.style.marginTop = '10px';
-        
-        // Create YouTube embed
-        const youtubeEmbed = document.createElement('iframe');
-        youtubeEmbed.width = '300';
-        youtubeEmbed.height = '169';
-        youtubeEmbed.src = `https://www.youtube.com/embed/${randomSong.youtubeId}?autoplay=0&controls=1&rel=0`;
-        youtubeEmbed.frameBorder = '0';
-        youtubeEmbed.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-        youtubeEmbed.allowFullscreen = true;
-        youtubeEmbed.style.borderRadius = '8px';
-        youtubeEmbed.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-        
-        // Create streaming links
-        const streamingLinks = document.createElement('div');
-        streamingLinks.style.marginTop = '10px';
-        streamingLinks.style.fontSize = '12px';
-        streamingLinks.style.color = '#666';
-        streamingLinks.innerHTML = `
-            <a href="${randomSong.spotifyUrl}" target="_blank" style="color: #1DB954; text-decoration: none; margin-right: 10px;">🎵 Listen on Spotify</a>
-            <a href="https://www.youtube.com/watch?v=${randomSong.youtubeId}" target="_blank" style="color: #FF0000; text-decoration: none;">▶️ Watch on YouTube</a>
-        `;
-        
-        playerContainer.appendChild(youtubeEmbed);
-        playerContainer.appendChild(streamingLinks);
-        
-        // Add to chat
-        chatBox.appendChild(playerContainer);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    // --- Utility Functions ---
-    function addMessageToUI(sender, text, isHtml = false, mood = 'default') {
-        if (sender === 'bot') {
-            // Create a flex row for icon and message bubble
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.alignItems = 'flex-end';
-            row.style.marginBottom = '8px';
-
-            // Capybara icon
-            const icon = document.createElement('img');
-            icon.src = 'capy-icon.png';
-            icon.alt = 'Capybara Chatbot';
-            icon.className = 'chatbot-icon';
-            icon.style.marginRight = '8px';
-
-            // Message bubble
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('chat-message', 'bot-message');
-            const moodClass = `bot-message-${mood}`;
-            messageElement.classList.add(moodClass);
-            if (isHtml) {
-                messageElement.innerHTML = text;
-            } else {
-                messageElement.textContent = text;
+                console.log('Chat history loaded from localStorage');
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+                chatBox.innerHTML = '';
+                addMessageToUI('bot', getWelcomeMessage());
             }
-
-            row.appendChild(icon);
-            row.appendChild(messageElement);
-            chatBox.appendChild(row);
         } else {
-            // User message (no icon, normal bubble)
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('chat-message', 'user-message');
-            if (isHtml) {
-                messageElement.innerHTML = text;
-            } else {
-                messageElement.textContent = text;
+            chatBox.innerHTML = '';
+            addMessageToUI('bot', getWelcomeMessage());
+        }
+    }
+}
+
+// Save chat messages to localStorage (updated for session management)
+function saveChatMessages() {
+    saveCurrentSession();
+}
+
+function addMessageToUI(sender, text, isHtml = false, mood = 'default') {
+    const chatBox = document.getElementById('chat-box');
+    if (sender === 'bot') {
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('chat-message', 'bot-message');
+        const icon = document.createElement('img');
+        icon.src = 'capy-icon.png';
+        icon.alt = 'Capybara Chatbot';
+        icon.className = 'chatbot-icon';
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-content');
+        if (isHtml) {
+            messageContent.innerHTML = text;
+        } else {
+            messageContent.textContent = text;
+        }
+        messageContainer.appendChild(icon);
+        messageContainer.appendChild(messageContent);
+        chatBox.appendChild(messageContainer);
+    } else if (sender === 'user') {
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('chat-message', 'user-message');
+        const messageContent = document.createElement('div');
+        messageContent.classList.add('message-content');
+        if (isHtml) {
+            messageContent.innerHTML = text;
+        } else {
+            messageContent.textContent = text;
+        }
+        messageContainer.appendChild(messageContent);
+        chatBox.appendChild(messageContainer);
+    }
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    // Save messages to localStorage after each message
+    saveChatMessages();
+}
+
+async function sendMessage() {
+    const userInput = document.getElementById('user-input');
+    const message = userInput.value.trim();
+    if (!message) return;
+
+    // Add user message to UI
+    addMessageToUI('user', message);
+    userInput.value = '';
+
+    // Show typing indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'chat-message bot-message typing-indicator';
+    typingIndicator.innerHTML = `
+        <img src="capy-icon.png" alt="Capybara Chatbot" class="chatbot-icon">
+        <div class="message-content">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+    document.getElementById('chat-box').appendChild(typingIndicator);
+    document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+
+    try {
+        // Get Gemini API key
+        const geminiApiKey = window.geminiApiKey || localStorage.getItem('geminiApiKey');
+        if (!geminiApiKey || geminiApiKey === "YOUR_GEMINI_API_KEY") {
+            throw new Error('Gemini API key not found. Please configure it in gemini-config.js or enter it when prompted.');
+        }
+
+        const systemPrompt = `You are Capy, a friendly and empathetic capybara chatbot. Your goal is to help users feel better.
+
+Your personality: Warm, gentle, slightly playful, and very supportive. Use simple language and occasionally use capybara-themed puns or phrases (e.g., "Let's munch on some good vibes," "You're looking capy-tivating today!").
+
+Keep your responses short, conversational, and supportive. Focus on being a good listener and offering simple encouragement.`;
+
+        // Make API call to Gemini
+        const requestBody = {
+            contents: [
+                {
+                    role: 'user',
+                    parts: [{ text: systemPrompt + '\n\nNow, please respond to the user message in a conversational way.' }]
+                },
+                {
+                    role: 'user',
+                    parts: [{ text: message }]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 1024,
+            },
+        };
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API request failed: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const botResponse = data.candidates[0].content.parts[0].text;
+            
+            // Remove typing indicator
+            const typingIndicator = document.querySelector('.typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
             }
-            chatBox.appendChild(messageElement);
+            
+            // Add bot response to UI
+            addMessageToUI('bot', botResponse);
+            
+        } else {
+            throw new Error('Invalid response format from API');
         }
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
 
-    function addMessage(sender, text, isHtml = false) {
-        addMessageToUI(sender, text, isHtml, currentMood);
-        // Save chat history after adding a message
-        setTimeout(saveChatHistory, 100);
-    }
-
-    function addMessageToHistory(role, text) {
-        conversationHistory.push({ role, parts: [{ text }] });
-        // Optional: Limit history size to keep API calls from getting too large
-        if (conversationHistory.length > 10) {
-            conversationHistory.shift(); // Remove the oldest message
+    } catch (error) {
+        console.error('Error sending message:', error);
+        
+        // Remove typing indicator
+        const typingIndicator = document.querySelector('.typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
         }
-        // Save chat history after updating conversation history
-        setTimeout(saveChatHistory, 100);
+        
+        // Show error message
+        addMessageToUI('bot', `Sorry, I'm having trouble responding right now. Please try again later. Error: ${error.message}`);
     }
-}); 
+}
+
+// Clear current chat messages
+function clearCurrentChat() {
+    if (confirm('Are you sure you want to clear this chat? This will remove all messages but keep the chat session.')) {
+        const currentSessionId = localStorage.getItem('capycare_current_session');
+        if (!currentSessionId) return;
+        
+        const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+        const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+        
+        if (currentSessionIndex !== -1) {
+            // Clear messages but keep the session
+            sessions[currentSessionIndex].messages = [];
+            sessions[currentSessionIndex].title = 'New Chat';
+            localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+            
+            // Clear chat box and show welcome message
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = '';
+            addMessageToUI('bot', getWelcomeMessage());
+            
+            // Update chat title
+            const chatTitle = document.getElementById('current-chat-title');
+            if (chatTitle) {
+                chatTitle.textContent = 'New Chat';
+            }
+            
+            showNotification('Chat cleared! 🧹', 'success');
+        }
+    }
+}
+
+// Update user info display
+function updateUserInfo() {
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+    
+    console.log('Updating user info:', user); // Debug log
+    
+    if (userAvatar) {
+        if (user.email) {
+            userAvatar.textContent = user.email.charAt(0).toUpperCase();
+        } else {
+            userAvatar.textContent = 'U';
+        }
+    }
+    
+    if (userName) {
+        if (user.email) {
+            // Show email, but truncate if too long
+            const email = user.email;
+            if (email.length > 20) {
+                userName.textContent = email.substring(0, 17) + '...';
+            } else {
+                userName.textContent = email;
+            }
+        } else {
+            userName.textContent = 'User';
+        }
+    }
+}
+
+// Debug function to export chat history (for testing)
+function exportChatHistory() {
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const exportData = {
+        exportDate: new Date().toISOString(),
+        totalSessions: sessions.length,
+        sessions: sessions
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `capycare-chat-history-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    showNotification('Chat history exported! 📁', 'success');
+}
+
+// Debug function to show session info in console
+function debugSessions() {
+    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const currentSessionId = localStorage.getItem('capycare_current_session');
+    
+    console.log('=== CapyCare Session Debug ===');
+    console.log('Total sessions:', sessions.length);
+    console.log('Current session ID:', currentSessionId);
+    console.log('Sessions:', sessions);
+    
+    sessions.forEach((session, index) => {
+        console.log(`Session ${index + 1}:`, {
+            id: session.id,
+            title: session.title,
+            messageCount: session.messages ? session.messages.length : 0,
+            timestamp: new Date(session.timestamp).toLocaleString(),
+            isCurrent: session.id === currentSessionId
+        });
+    });
+}
+
+// Show mental health tips
+function showMentalHealthTips() {
+    const tips = [
+        "🌱 Take deep breaths: Inhale for 4 counts, hold for 4, exhale for 4. Repeat 5 times.",
+        "🚶‍♀️ Go for a short walk: Even 10 minutes of movement can boost your mood.",
+        "💧 Stay hydrated: Drink a glass of water - dehydration can affect your mood.",
+        "☀️ Get some sunlight: Natural light helps regulate your circadian rhythm.",
+        "🎵 Listen to calming music: Create a playlist of songs that make you feel good.",
+        "📝 Write it down: Journal your thoughts and feelings to process them better.",
+        "🤗 Reach out: Text or call a friend or family member you trust.",
+        "🧘‍♀️ Try mindfulness: Focus on the present moment, notice your surroundings.",
+        "😴 Prioritize sleep: Aim for 7-9 hours of quality sleep each night.",
+        "🍎 Eat well: Nourish your body with healthy foods that support brain health.",
+        "🎨 Express yourself: Draw, paint, or create something that brings you joy.",
+        "🐕 Pet an animal: Spending time with pets can reduce stress and anxiety.",
+        "🌿 Practice gratitude: Write down 3 things you're thankful for today.",
+        "🏃‍♀️ Exercise: Even light exercise releases endorphins that improve mood.",
+        "📚 Read something positive: Choose uplifting books or articles.",
+        "📞 Crisis Support: If you're in crisis, call 988 (US) or your local crisis hotline immediately.",
+        "🏥 Professional Help: Consider talking to a therapist or counselor. Many offer sliding scale fees.",
+        "💼 Employee Assistance: Check if your workplace offers free counseling through EAP programs.",
+        "🎓 Student Services: If you're a student, your school likely offers free mental health services.",
+        "🌐 Online Therapy: Platforms like BetterHelp, Talkspace, or 7 Cups offer online counseling.",
+        "🏥 Insurance Coverage: Check your health insurance for mental health benefits and covered providers.",
+        "📱 Mental Health Apps: Try apps like Headspace, Calm, or Woebot for guided support.",
+        "👥 Support Groups: Look for local or online support groups for specific challenges.",
+        "🏛️ Community Centers: Many community centers offer low-cost or free mental health services.",
+        "📋 Self-Assessment: Take online mental health screenings to better understand your needs.",
+        "🔍 Find a Therapist: Use Psychology Today's therapist finder or ask your doctor for referrals."
+    ];
+    
+    // Get a random tip
+    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+    
+    // Add the tip as a bot message
+    addMessageToUI('bot', `<div style="line-height: 1.6;">
+<h4 style="color: #d97706; margin-bottom: 10px;">💡 Mental Health Tip:</h4>
+<p style="margin: 8px 0; font-size: 16px;">${randomTip}</p>
+<p style="margin: 15px 0 0 0; font-style: italic; color: #6b7280;">Remember, seeking help is a sign of strength, not weakness. You don't have to face challenges alone! 🦫</p>
+</div>`, true);
+    
+    // Show notification
+    showNotification('Mental health tip shared! 💡', 'success');
+}
+
+// Show comprehensive mental health support information
+function showMentalHealthSupport() {
+    const supportInfo = `<div style="line-height: 1.6;">
+<h3 style="color: #dc2626; margin-bottom: 15px;">🆘 Mental Health Support</h3>
+
+<h4 style="color: #d97706; margin: 10px 0 5px 0;">Crisis Support:</h4>
+<ul style="margin: 5px 0; padding-left: 20px;">
+<li><strong>988</strong> - Suicide & Crisis Lifeline (US)</li>
+<li><strong>911</strong> - Emergency Services</li>
+<li><strong>Crisis Text Line</strong>: Text HOME to 741741</li>
+</ul>
+
+<h4 style="color: #d97706; margin: 10px 0 5px 0;">Find Professional Help:</h4>
+<ul style="margin: 5px 0; padding-left: 20px;">
+<li><strong>Psychology Today</strong> - Find therapists near you</li>
+<li><strong>BetterHelp/Talkspace</strong> - Online therapy</li>
+<li><strong>Insurance</strong> - Check your coverage for mental health</li>
+<li><strong>Work/School</strong> - Ask about EAP or student services</li>
+</ul>
+
+<h4 style="color: #d97706; margin: 10px 0 5px 0;">Support Resources:</h4>
+<ul style="margin: 5px 0; padding-left: 20px;">
+<li><strong>NAMI</strong> - Support groups and resources</li>
+<li><strong>Mental Health Apps</strong> - Headspace, Calm, Woebot</li>
+<li><strong>Community Centers</strong> - Low-cost local services</li>
+</ul>
+
+<div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #f59e0b;">
+<p style="margin: 5px 0;"><strong>Remember:</strong> Seeking help is a sign of strength! You deserve support. 🦫</p>
+</div>
+
+<p style="margin: 8px 0;"><strong>Next Steps:</strong> Start with one resource that feels right for you. You're not alone! 💙</p>
+</div>`;
+
+    addMessageToUI('bot', supportInfo, true); // true for HTML content
+    showNotification('Mental health support information shared! 🆘', 'info');
+}
+
+// Add event listener for comprehensive support (you can add this to a new button or modify existing one)
+function addSupportButton() {
+    const supportBtn = document.createElement('button');
+    supportBtn.className = 'icon-btn';
+    supportBtn.innerHTML = '<span>🆘</span>';
+    supportBtn.title = 'Mental Health Support & Resources';
+    supportBtn.addEventListener('click', showMentalHealthSupport);
+    
+    // Add to input icons if it exists
+    const inputIcons = document.querySelector('.input-icons');
+    if (inputIcons) {
+        inputIcons.appendChild(supportBtn);
+    }
+} 
