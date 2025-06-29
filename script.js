@@ -23,9 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     parsedHistory.messages.forEach(msg => {
                         addMessageToUI(msg.sender, msg.text, msg.isHtml, msg.mood);
                     });
+                    console.log('Chat history loaded from localStorage');
+                    return true; // Indicate that history was loaded
                 }
-                
-                console.log('Chat history loaded from localStorage');
             } catch (error) {
                 console.error('Error loading chat history:', error);
                 // If there's an error, start fresh
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentMood = 'default';
             }
         }
+        return false; // Indicate that no history was loaded
     }
 
     // Save chat history to localStorage
@@ -114,13 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser) {
             user = currentUser;
             // Load chat history after user is authenticated
-            loadChatHistory();
+            const historyLoaded = loadChatHistory();
             
-            // Only show welcome message if no previous conversation exists
-            if (conversationHistory.length === 0) {
+            // Only show welcome message if there's truly no conversation history
+            if (!historyLoaded && conversationHistory.length === 0) {
                 addMessage('bot', "Hi there! I'm Capy, your personal companion. It's great to see you. How are you feeling today?");
             } else {
-                // If there's existing conversation, just scroll to bottom
+                // If there's existing conversation, just scroll to bottom without adding any new messages
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
         } else {
