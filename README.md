@@ -186,7 +186,9 @@ This is a personal project, but suggestions and feedback are welcome! Feel free 
 ## 📄 License
 
 This project is for personal use and educational purposes.
+
 Video Link: https://youtu.be/2RUEQ_Vs4EE
+
 ---
 
 **Remember:** CapyCare is here to support you, but you're not alone. Reach out to friends, family, or mental health professionals when you need additional support. 🦫💙 
