@@ -44,6 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
         tipsBtn.addEventListener('click', showMentalHealthTips);
     }
 
+    // Dark mode toggle functionality
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+        // Initialize dark mode state
+        initializeDarkMode();
+    }
+
     // Mobile menu button
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', () => {
@@ -1189,4 +1197,40 @@ function getCrisisSupport() {
     </div>`;
 
     return html;
+}
+
+// Dark mode toggle functionality
+function toggleDarkMode() {
+    const body = document.body;
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    
+    body.classList.toggle('dark-mode');
+    const isDarkMode = body.classList.contains('dark-mode');
+    
+    // Update toggle button icon
+    if (darkModeToggle) {
+        darkModeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+        darkModeToggle.title = isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('capycare_dark_mode', isDarkMode);
+    
+    // Show notification
+    const mode = isDarkMode ? 'Dark' : 'Light';
+    showNotification(`${mode} mode activated! ${isDarkMode ? '🌙' : '☀️'}`, 'success');
+}
+
+// Initialize dark mode state on page load
+function initializeDarkMode() {
+    const savedDarkMode = localStorage.getItem('capycare_dark_mode') === 'true';
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    
+    if (savedDarkMode) {
+        document.body.classList.add('dark-mode');
+        if (darkModeToggle) {
+            darkModeToggle.textContent = '☀️';
+            darkModeToggle.title = 'Switch to Light Mode';
+        }
+    }
 } 

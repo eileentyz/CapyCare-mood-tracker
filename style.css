@@ -339,6 +339,10 @@ p {
     left: 0;
     padding: 2rem 3rem 0 3rem;
     z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: calc(100% - 6rem);
 }
 
 .home-right {
@@ -1059,4 +1063,329 @@ p {
     background: #3d2323;
     color: #fff;
     border: 1.5px solid #ff6b6b;
+}
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+    background: #f1f5f9;
+    color: #64748b;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.10);
+    margin-right: 8px;
+}
+
+.dark-mode-toggle:hover {
+    background: #e2e8f0;
+    color: #475569;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(100, 116, 139, 0.15);
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background: linear-gradient(120deg, #1e293b 0%, #334155 100%);
+}
+
+body.dark-mode .app-container {
+    background: #1e293b;
+}
+
+body.dark-mode .main-frame {
+    background: #334155;
+}
+
+body.dark-mode .sidebar {
+    background: #1e293b;
+    border-right: 1px solid #475569;
+}
+
+body.dark-mode .sidebar-header {
+    background: #1e293b;
+    border-bottom: 1px solid #475569;
+}
+
+body.dark-mode .chat-history {
+    background: #1e293b;
+}
+
+body.dark-mode .chat-item {
+    color: #cbd5e1;
+    background: transparent;
+}
+
+body.dark-mode .chat-item:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+}
+
+body.dark-mode .chat-item.active {
+    background: rgba(245, 158, 11, 0.25);
+    color: #f59e0b;
+}
+
+body.dark-mode .chat-item-meta {
+    color: #64748b;
+}
+
+body.dark-mode .chat-item.active .chat-item-meta {
+    color: #f59e0b;
+}
+
+body.dark-mode .sidebar-footer {
+    background: #1e293b;
+    border-top: 1px solid #475569;
+}
+
+body.dark-mode .user-info {
+    background: #1e293b;
+}
+
+body.dark-mode .user-name {
+    color: #e2e8f0;
+}
+
+body.dark-mode .logout-btn {
+    background: linear-gradient(135deg, #334155, #475569);
+    border: 1px solid #64748b;
+    color: #cbd5e1;
+}
+
+body.dark-mode .logout-btn:hover {
+    background: linear-gradient(135deg, #475569, #64748b);
+    color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+body.dark-mode .main-content {
+    background: #0f172a;
+}
+
+body.dark-mode .chat-container {
+    background: #0f172a;
+}
+
+body.dark-mode .chat-header {
+    background: #1e293b;
+    border-bottom: 1px solid #475569;
+}
+
+body.dark-mode #current-chat-title {
+    color: #e2e8f0;
+}
+
+body.dark-mode .chat-box {
+    background: #0f172a;
+}
+
+body.dark-mode .chat-message {
+    background: transparent;
+    border: none;
+}
+
+body.dark-mode .message-content {
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+}
+
+body.dark-mode .user-message .message-content {
+    background: #1e40af;
+    color: #f1f5f9;
+    border: 1px solid #3b82f6;
+}
+
+body.dark-mode .chat-input-area {
+    background: #0f172a;
+    border-top: 1px solid #475569;
+}
+
+body.dark-mode #user-input {
+    background: #1e293b;
+    border: 1px solid #64748b;
+    color: #e2e8f0;
+}
+
+body.dark-mode #user-input:focus {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #334155, #475569);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+body.dark-mode .icon-btn {
+    color: #94a3b8;
+}
+
+body.dark-mode .icon-btn:hover {
+    background: linear-gradient(135deg, #475569, #64748b);
+    color: #f59e0b;
+}
+
+body.dark-mode .dark-mode-toggle {
+    background: #475569;
+    color: #e2e8f0;
+}
+
+body.dark-mode .dark-mode-toggle:hover {
+    background: #64748b;
+    color: #f1f5f9;
+}
+
+body.dark-mode .clear-chat-btn {
+    background: #475569;
+    color: #e2e8f0;
+    border: 1px solid #64748b;
+}
+
+body.dark-mode .clear-chat-btn:hover {
+    background: #64748b;
+    color: #f1f5f9;
+}
+
+body.dark-mode .mobile-menu-btn {
+    color: #94a3b8;
+}
+
+body.dark-mode .mobile-menu-btn:hover {
+    background: #475569;
+}
+
+/* Dark mode for music recommendations */
+body.dark-mode .music-recommendation {
+    background: #475569 !important;
+    border-left: 4px solid #f59e0b !important;
+}
+
+body.dark-mode .music-recommendation h4 {
+    color: #f59e0b !important;
+}
+
+body.dark-mode .music-recommendation p {
+    color: #cbd5e1 !important;
+}
+
+body.dark-mode .music-recommendation .song-item {
+    background: #1e293b !important;
+    border: 1px solid #64748b !important;
+}
+
+body.dark-mode .music-recommendation .song-name {
+    color: #e2e8f0 !important;
+}
+
+/* Dark mode for crisis support */
+body.dark-mode .crisis-support {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+    border: 3px solid #dc2626 !important;
+}
+
+body.dark-mode .crisis-support h3 {
+    color: #fecaca !important;
+}
+
+body.dark-mode .crisis-support p {
+    color: #e2e8f0 !important;
+}
+
+/* Dark mode for home page */
+body.dark-mode .home-header {
+    background: #1e293b;
+}
+
+body.dark-mode .logo-title {
+    color: #e2e8f0;
+}
+
+body.dark-mode .logo-subtitle {
+    color: #94a3b8;
+}
+
+body.dark-mode .home-left h1 {
+    color: #f1f5f9;
+}
+
+body.dark-mode .home-left p {
+    color: #cbd5e1;
+}
+
+body.dark-mode .home-btn {
+    background: #f59e0b;
+    color: #1e293b;
+}
+
+body.dark-mode .home-btn:hover {
+    background: #d97706;
+    color: #f1f5f9;
+}
+
+/* Dark mode for login page */
+body.dark-mode .container {
+    background: #1e293b;
+    border: 1px solid #475569;
+}
+
+body.dark-mode .login-card h1 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .form-container input {
+    background: #334155;
+    border: 1px solid #64748b;
+    color: #e2e8f0;
+}
+
+body.dark-mode .form-container input:focus {
+    border-color: #f59e0b;
+    background: #475569;
+}
+
+body.dark-mode .form-container label {
+    color: #cbd5e1;
+}
+
+body.dark-mode .login-top-message {
+    color: #94a3b8;
+}
+
+body.dark-mode .btn {
+    background: #f59e0b;
+    color: #1e293b;
+}
+
+body.dark-mode .btn:hover {
+    background: #d97706;
+    color: #f1f5f9;
+}
+
+body.dark-mode .signup-btn {
+    background: #334155;
+    color: #e2e8f0;
+    border: 1.5px solid #f59e0b;
+}
+
+body.dark-mode .signup-btn:hover {
+    background: #f59e0b;
+    color: #1e293b;
+}
+
+body.dark-mode .signup-link-form a {
+    color: #f59e0b;
+}
+
+body.dark-mode .error-text {
+    color: #fca5a5;
+}
+
+body.dark-mode .chatbot-icon {
+    background: #0f172a;
+    border: 2px solid #475569;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.3);
 }

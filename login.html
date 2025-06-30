@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle Dark Mode" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">🌙</button>
     <div class="container login-card">
         <div class="login-top-message">────────── ୨୧ ──────────</div>
         <h1 class="login-title">Welcome Back</h1>
@@ -47,6 +48,44 @@
             });
         }
     });
+    </script>
+    <script>
+        // Dark mode functionality
+        document.addEventListener("DOMContentLoaded", function() {
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', toggleDarkMode);
+                initializeDarkMode();
+            }
+        });
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            
+            body.classList.toggle('dark-mode');
+            const isDarkMode = body.classList.contains('dark-mode');
+            
+            if (darkModeToggle) {
+                darkModeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+                darkModeToggle.title = isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            }
+            
+            localStorage.setItem('capycare_dark_mode', isDarkMode);
+        }
+
+        function initializeDarkMode() {
+            const savedDarkMode = localStorage.getItem('capycare_dark_mode') === 'true';
+            const darkModeToggle = document.getElementById('dark-mode-toggle');
+            
+            if (savedDarkMode) {
+                document.body.classList.add('dark-mode');
+                if (darkModeToggle) {
+                    darkModeToggle.textContent = '☀️';
+                    darkModeToggle.title = 'Switch to Light Mode';
+                }
+            }
+        }
     </script>
 </body>
 </html> 
