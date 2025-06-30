@@ -700,16 +700,19 @@ If recommending music, include specific song suggestions with YouTube links when
             // Add bot response to UI with mood styling
             addMessageToUI('bot', botResponse, false, detectedMood);
             
-            // Add music recommendation if mood is detected and user might need support
-            if (detectedMood !== 'neutral' && detectedMood !== 'happy') {
+            // Add music recommendation for any detected mood (except crisis)
+            if (detectedMood !== 'neutral' && detectedMood !== 'crisis') {
                 setTimeout(() => {
-                    if (detectedMood === 'crisis') {
-                        const crisisSupport = getCrisisSupport();
-                        addMessageToUI('bot', crisisSupport, true, 'crisis');
-                    } else {
-                        const musicRecommendation = getMusicRecommendation(detectedMood);
-                        addMessageToUI('bot', musicRecommendation, true, detectedMood);
-                    }
+                    const musicRecommendation = getMusicRecommendation(detectedMood);
+                    addMessageToUI('bot', musicRecommendation, true, detectedMood);
+                }, 1000);
+            }
+            
+            // Add crisis support if crisis is detected
+            if (detectedMood === 'crisis') {
+                setTimeout(() => {
+                    const crisisSupport = getCrisisSupport();
+                    addMessageToUI('bot', crisisSupport, true, 'crisis');
                 }, 1000);
             }
             
@@ -937,6 +940,27 @@ function addSupportButton() {
 // Get music recommendations based on mood
 function getMusicRecommendation(mood) {
     const musicRecommendations = {
+        happy: {
+            title: "🎵 Uplifting Music to Keep the Good Vibes Going",
+            songs: [
+                {
+                    name: "Happy - Pharrell Williams",
+                    youtube: "https://www.youtube.com/watch?v=ZbZSe6N_BXs",
+                    spotify: "https://open.spotify.com/track/60nZcImufyMA1MKQY3dcCH"
+                },
+                {
+                    name: "Good Life - OneRepublic",
+                    youtube: "https://www.youtube.com/watch?v=1Y8MxD6mcDk",
+                    spotify: "https://open.spotify.com/track/5sFpVW8NRLhsSkc58YzUkL"
+                },
+                {
+                    name: "Walking on Sunshine - Katrina & The Waves",
+                    youtube: "https://www.youtube.com/watch?v=iPUmE-tne5U",
+                    spotify: "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0"
+                }
+            ],
+            message: "Keep that wonderful energy flowing! These songs will help maintain your positive mood. 🌟"
+        },
         sad: {
             title: "🎵 Music for When You're Feeling Down",
             songs: [
