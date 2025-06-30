@@ -40,17 +40,7 @@ A friendly AI-powered mood tracking and mental health companion app featuring Ca
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - Gemini API key for AI functionality
 - Firebase project for authentication
-
-### Setup Instructions
-
-1. **Clone or download** the project files
-2. **Configure API Keys:**
-   - Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Add your Firebase configuration in `firebase-config.js`
-3. **Open the app:**
-   - Open `index.html` in your web browser
-   - Or serve the files using a local web server
-
+- 
 ### First Time Setup
 1. Click "Begin My Capybara Adventure" on the home page
 2. Create an account or log in
@@ -58,13 +48,6 @@ A friendly AI-powered mood tracking and mental health companion app featuring Ca
 4. Enjoy music recommendations and emotional support!
 
 ## 🎵 Music Therapy Features
-
-### Mood-Based Song Categories
-- **😊 Happy** - Uplifting pop and rock songs
-- **😢 Sad** - Comforting alternative and folk music
-- **😰 Anxious** - Soothing classical and ambient music
-- **😌 Calm** - Relaxing piano and classical pieces
-- **⚡ Energized** - Motivational rock and hip hop
 
 ### How Music Therapy Works
 1. **Chat with Capy** about your feelings
