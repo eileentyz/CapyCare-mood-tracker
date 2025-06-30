@@ -50,8 +50,14 @@ body {
 }
 
 .bot-message {
-    flex-direction: row;
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
 }
+
+/* Mood-based styling for bot messages - REMOVED for user comfort */
+/* All bot messages will now have the same neutral styling */
 
 .user-message {
     flex-direction: row-reverse;

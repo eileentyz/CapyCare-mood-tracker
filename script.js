@@ -542,6 +542,12 @@ function addMessageToUI(sender, text, isHtml = false, mood = 'default') {
     if (sender === 'bot') {
         const messageContainer = document.createElement('div');
         messageContainer.classList.add('chat-message', 'bot-message');
+        
+        // Add mood-based styling
+        if (mood && mood !== 'default' && mood !== 'neutral') {
+            messageContainer.classList.add(`bot-message-${mood}`);
+        }
+        
         const icon = document.createElement('img');
         icon.src = 'capy-icon.png';
         icon.alt = 'Capybara Chatbot';
@@ -607,11 +613,36 @@ async function sendMessage() {
             throw new Error('Gemini API key not found. Please configure it in gemini-config.js or enter it when prompted.');
         }
 
-        const systemPrompt = `You are Capy, a friendly and empathetic capybara chatbot. Your goal is to help users feel better.
+        const systemPrompt = `You are Capy, a friendly and empathetic capybara chatbot. Your goal is to help users feel better through conversation and music therapy.
 
 Your personality: Warm, gentle, slightly playful, and very supportive. Use simple language and occasionally use capybara-themed puns or phrases (e.g., "Let's munch on some good vibes," "You're looking capy-tivating today!").
 
-Keep your responses short, conversational, and supportive. Focus on being a good listener and offering simple encouragement.`;
+IMPORTANT INSTRUCTIONS:
+1. After each response, analyze the user's mood and respond with one of these mood indicators: [HAPPY], [SAD], [ANXIOUS], [CALM], [ENERGIZED], or [NEUTRAL]
+2. If the user seems to need emotional support, offer music recommendations based on their mood
+3. CRISIS DETECTION: If the user mentions words like "kill," "die," "suicide," "end it all," "want to die," "hurt myself," "don't want to live," "better off dead," "no reason to live," "give up," "can't take it anymore," "end my life," "self-harm," "cut myself," or similar concerning language, respond with [CRISIS] instead of a mood indicator
+4. Keep responses conversational and supportive, focusing on being a good listener
+
+Mood Detection Guidelines:
+- [HAPPY]: User expresses joy, excitement, contentment, or positive emotions
+- [SAD]: User expresses sadness, grief, loneliness, or negative emotions  
+- [ANXIOUS]: User expresses worry, stress, fear, or nervousness
+- [CALM]: User expresses peace, relaxation, or tranquility
+- [ENERGIZED]: User expresses motivation, enthusiasm, or high energy
+- [NEUTRAL]: User's mood is unclear or mixed
+- [CRISIS]: User expresses thoughts of self-harm, suicide, or extreme distress
+
+Music Recommendation Guidelines:
+- For HAPPY mood: Suggest uplifting pop, rock, or dance music
+- For SAD mood: Suggest comforting alternative, folk, or soft rock
+- For ANXIOUS mood: Suggest soothing classical, ambient, or meditation music
+- For CALM mood: Suggest relaxing piano, classical, or nature sounds
+- For ENERGIZED mood: Suggest motivational rock, hip hop, or electronic music
+
+Example response format:
+"Your response here... [HAPPY]"
+
+If recommending music, include specific song suggestions with YouTube links when appropriate.`;
 
         // Make API call to Gemini
         const requestBody = {
@@ -649,7 +680,16 @@ Keep your responses short, conversational, and supportive. Focus on being a good
         const data = await response.json();
         
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            const botResponse = data.candidates[0].content.parts[0].text;
+            let botResponse = data.candidates[0].content.parts[0].text;
+            
+            // Extract mood from response
+            let detectedMood = 'neutral';
+            const moodMatch = botResponse.match(/\[(HAPPY|SAD|ANXIOUS|CALM|ENERGIZED|NEUTRAL|CRISIS)\]/);
+            if (moodMatch) {
+                detectedMood = moodMatch[1].toLowerCase();
+                // Remove mood indicator from response
+                botResponse = botResponse.replace(/\[(HAPPY|SAD|ANXIOUS|CALM|ENERGIZED|NEUTRAL|CRISIS)\]/, '').trim();
+            }
             
             // Remove typing indicator
             const typingIndicator = document.querySelector('.typing-indicator');
@@ -657,8 +697,21 @@ Keep your responses short, conversational, and supportive. Focus on being a good
                 typingIndicator.remove();
             }
             
-            // Add bot response to UI
-            addMessageToUI('bot', botResponse);
+            // Add bot response to UI with mood styling
+            addMessageToUI('bot', botResponse, false, detectedMood);
+            
+            // Add music recommendation if mood is detected and user might need support
+            if (detectedMood !== 'neutral' && detectedMood !== 'happy') {
+                setTimeout(() => {
+                    if (detectedMood === 'crisis') {
+                        const crisisSupport = getCrisisSupport();
+                        addMessageToUI('bot', crisisSupport, true, 'crisis');
+                    } else {
+                        const musicRecommendation = getMusicRecommendation(detectedMood);
+                        addMessageToUI('bot', musicRecommendation, true, detectedMood);
+                    }
+                }, 1000);
+            }
             
         } else {
             throw new Error('Invalid response format from API');
@@ -879,4 +932,237 @@ function addSupportButton() {
     if (inputIcons) {
         inputIcons.appendChild(supportBtn);
     }
+}
+
+// Get music recommendations based on mood
+function getMusicRecommendation(mood) {
+    const musicRecommendations = {
+        sad: {
+            title: "🎵 Music for When You're Feeling Down",
+            songs: [
+                {
+                    name: "Fix You - Coldplay",
+                    youtube: "https://www.youtube.com/watch?v=k4V3Mo61fJM",
+                    spotify: "https://open.spotify.com/track/7LVHVU3tWfcxj5aiPFEW4Q"
+                },
+                {
+                    name: "The Scientist - Coldplay", 
+                    youtube: "https://www.youtube.com/watch?v=RB-RcX5DS5A",
+                    spotify: "https://open.spotify.com/track/75JFxkI2RXiU7L9VXzMkle"
+                },
+                {
+                    name: "Skinny Love - Bon Iver",
+                    youtube: "https://www.youtube.com/watch?v=8jLOxVEhIqI",
+                    spotify: "https://open.spotify.com/track/3B3eOgLJSqPEA0RfboIQVM"
+                }
+            ],
+            message: "Here are some comforting songs that might help lift your spirits. Sometimes music can be the best companion when we're feeling down. 💙"
+        },
+        anxious: {
+            title: "🎵 Calming Music for Anxiety Relief",
+            songs: [
+                {
+                    name: "Claire de Lune - Debussy",
+                    youtube: "https://www.youtube.com/watch?v=CvFH_6DNRCY",
+                    spotify: "https://open.spotify.com/track/0Qa0dEJOE9Qf1mUj8uYwM5"
+                },
+                {
+                    name: "Weightless - Marconi Union",
+                    youtube: "https://www.youtube.com/watch?v=UfcAVejslrU",
+                    spotify: "https://open.spotify.com/track/3b8UGLqUT1c3bCfXthzazt"
+                },
+                {
+                    name: "River Flows in You - Yiruma",
+                    youtube: "https://www.youtube.com/watch?v=7maJOI3QMu0",
+                    spotify: "https://open.spotify.com/track/7ySbfLwdCwl1EM0zNCJZ38"
+                }
+            ],
+            message: "These soothing melodies can help calm your mind and reduce anxiety. Take deep breaths while listening. 🌸"
+        },
+        calm: {
+            title: "🎵 Peaceful Music for Relaxation",
+            songs: [
+                {
+                    name: "Gymnopedie No. 1 - Erik Satie",
+                    youtube: "https://www.youtube.com/watch?v=S-Xm7s9eGxU",
+                    spotify: "https://open.spotify.com/track/6i0VQ9G8jfqnaqF0uPRrLP"
+                },
+                {
+                    name: "Canon in D - Pachelbel",
+                    youtube: "https://www.youtube.com/watch?v=NlprozGcs80",
+                    spotify: "https://open.spotify.com/track/5I8tOvK2eI8txD5XlHvdT7"
+                },
+                {
+                    name: "Moonlight Sonata - Beethoven",
+                    youtube: "https://www.youtube.com/watch?v=4Tr0otuiQuU",
+                    spotify: "https://open.spotify.com/track/1T2oKqZv89zJPOu5e2fvWc"
+                }
+            ],
+            message: "Perfect music to maintain your peaceful state of mind. Let these gentle melodies wash over you. 🍃"
+        },
+        energized: {
+            title: "🎵 High-Energy Music to Keep You Motivated",
+            songs: [
+                {
+                    name: "Eye of the Tiger - Survivor",
+                    youtube: "https://www.youtube.com/watch?v=btPJPFnesV4",
+                    spotify: "https://open.spotify.com/track/2KH16WveTQWT6KOG9Rg6e2"
+                },
+                {
+                    name: "We Will Rock You - Queen",
+                    youtube: "https://www.youtube.com/watch?v=-tJYN-eG1zk",
+                    spotify: "https://open.spotify.com/track/54flyrjcdnQdco7300avMJ"
+                },
+                {
+                    name: "Lose Yourself - Eminem",
+                    youtube: "https://www.youtube.com/watch?v=_Yhyp-_hX2s",
+                    spotify: "https://open.spotify.com/track/5Z01UMMf7V1o0MzF86s6WJ"
+                }
+            ],
+            message: "Channel that energy into something amazing! These songs will keep your motivation high. ⚡"
+        }
+    };
+
+    const recommendation = musicRecommendations[mood];
+    if (!recommendation) return '';
+
+    let html = `<div style="background: #fef3c7; padding: 15px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 10px 0;">
+        <h4 style="color: #d97706; margin: 0 0 10px 0;">${recommendation.title}</h4>
+        <p style="margin: 0 0 15px 0; color: #374151;">${recommendation.message}</p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">`;
+
+    recommendation.songs.forEach(song => {
+        html += `
+            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <div style="font-weight: 600; color: #1f2937; margin-bottom: 5px;">${song.name}</div>
+                <div style="display: flex; gap: 8px;">
+                    <a href="${song.youtube}" target="_blank" style="background: #ff0000; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px;">YouTube</a>
+                    <a href="${song.spotify}" target="_blank" style="background: #1db954; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none; font-size: 12px;">Spotify</a>
+                </div>
+            </div>`;
+    });
+
+    html += `</div>
+        <p style="margin: 15px 0 0 0; font-style: italic; color: #6b7280; font-size: 14px;">
+            Remember, music is a powerful tool for emotional healing. Let these songs be your companions! 🦫🎵
+        </p>
+    </div>`;
+
+    return html;
+}
+
+// Get crisis support and counseling recommendations
+function getCrisisSupport() {
+    const crisisSupport = {
+        title: "🆘 Immediate Crisis Support",
+        message: "I'm here for you, and you're not alone. Your feelings are valid, and there are people who want to help you.",
+        resources: [
+            {
+                name: "988 Suicide & Crisis Lifeline",
+                description: "24/7 free and confidential support",
+                phone: "988",
+                link: "https://988lifeline.org/",
+                available: "Available 24/7"
+            },
+            {
+                name: "Crisis Text Line",
+                description: "Text for immediate crisis support",
+                phone: "Text HOME to 741741",
+                link: "https://www.crisistextline.org/",
+                available: "Available 24/7"
+            },
+            {
+                name: "Emergency Services",
+                description: "For immediate danger",
+                phone: "911",
+                link: "#",
+                available: "Call immediately if in danger"
+            }
+        ],
+        counseling: [
+            {
+                name: "BetterHelp Online Therapy",
+                description: "Professional online counseling",
+                link: "https://www.betterhelp.com/",
+                cost: "Starting at $60/week"
+            },
+            {
+                name: "Talkspace",
+                description: "Licensed therapists online",
+                link: "https://www.talkspace.com/",
+                cost: "Starting at $69/week"
+            },
+            {
+                name: "7 Cups",
+                description: "Free online therapy and support",
+                link: "https://www.7cups.com/",
+                cost: "Free and paid options"
+            },
+            {
+                name: "Psychology Today",
+                description: "Find local therapists",
+                link: "https://www.psychologytoday.com/us/therapists",
+                cost: "Varies by provider"
+            }
+        ]
+    };
+
+    let html = `<div style="background: linear-gradient(135deg, #fef2f2, #fecaca); padding: 20px; border-radius: 12px; border: 3px solid #dc2626; margin: 15px 0;">
+        <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 1.3rem;">${crisisSupport.title}</h3>
+        <p style="margin: 0 0 20px 0; color: #374151; font-size: 1.1rem; line-height: 1.6;">${crisisSupport.message}</p>
+        
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
+            <h4 style="color: #dc2626; margin: 0 0 12px 0;">🚨 Immediate Crisis Resources</h4>
+            <div style="display: flex; flex-direction: column; gap: 12px;">`;
+
+    crisisSupport.resources.forEach(resource => {
+        html += `
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${resource.name}</div>
+                <div style="color: #6b7280; font-size: 14px; margin-bottom: 6px;">${resource.description}</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">${resource.phone}</span>
+                    <span style="color: #059669; font-size: 12px; font-weight: 500;">${resource.available}</span>
+                </div>
+            </div>`;
+    });
+
+    html += `</div></div>
+        
+        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            <h4 style="color: #d97706; margin: 0 0 12px 0;">💙 Professional Counseling Options</h4>
+            <p style="margin: 0 0 15px 0; color: #6b7280; font-size: 14px;">These services can provide ongoing support and professional help:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">`;
+
+    crisisSupport.counseling.forEach(service => {
+        html += `
+            <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600; color: #1f2937;">${service.name}</div>
+                        <div style="color: #6b7280; font-size: 13px;">${service.description}</div>
+                        <div style="color: #059669; font-size: 12px; font-weight: 500;">${service.cost}</div>
+                    </div>
+                    <a href="${service.link}" target="_blank" style="background: #f59e0b; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: 500;">Visit</a>
+                </div>
+            </div>`;
+    });
+
+    html += `</div></div>
+        
+        <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-weight: 500; font-size: 14px;">
+                💙 <strong>Remember:</strong> You are not alone, and your life has value. Reaching out for help is a sign of strength, not weakness. 
+                There are people who care about you and want to support you through this difficult time.
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px;">
+            <p style="margin: 0; color: #6b7280; font-size: 13px; font-style: italic;">
+                CapyCare is here to support you, but professional help is essential for crisis situations. 🦫💙
+            </p>
+        </div>
+    </div>`;
+
+    return html;
 } 
