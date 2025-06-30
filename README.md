@@ -1,4 +1,4 @@
-# CapyCare - Your Capybara Mood Companion 🦫
+# CapyCare - Your Capybara Mood Companion •⩊•
 
 A friendly AI-powered mood tracking and mental health companion app featuring Capy, an empathetic capybara chatbot that helps you feel better through conversation, music therapy, and emotional support.
 
