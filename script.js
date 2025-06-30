@@ -107,30 +107,47 @@ function checkForNewLogin() {
     }
 }
 
-// Initialize chat sessions management
+// Initialize chat sessions for the current user
 function initializeChatSessions() {
-    // Get or create sessions array
-    let sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
     
-    // If no sessions exist, create a default one
-    if (sessions.length === 0) {
-        const defaultSession = {
-            id: generateSessionId(),
+    // Check if user just logged in
+    const lastLogin = localStorage.getItem(`capycare_last_login_${userId}`);
+    const currentTime = Date.now();
+    
+    // If this is a new login (or first time), create a new session
+    if (!lastLogin || (currentTime - parseInt(lastLogin)) > 300000) { // 5 minutes
+        const newSessionId = generateSessionId();
+        const newSession = {
+            id: newSessionId,
             title: 'New Chat',
-            timestamp: Date.now(),
+            timestamp: currentTime,
+            lastUpdated: currentTime,
             messages: []
         };
-        sessions = [defaultSession];
-        localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+        
+        // Get existing sessions for this user
+        const existingSessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
+        existingSessions.unshift(newSession);
+        
+        // Save sessions and set current session
+        localStorage.setItem(`capycare_sessions_${userId}`, JSON.stringify(existingSessions));
+        localStorage.setItem(`capycare_current_session_${userId}`, newSessionId);
+        localStorage.setItem(`capycare_last_login_${userId}`, currentTime.toString());
+        
+        // Update UI
+        updateSessionsList();
+        
+        // Show welcome message
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox) {
+            chatBox.innerHTML = '';
+            addMessageToUI('bot', getWelcomeMessage());
+        }
+        
+        console.log('New chat session created for user:', userId);
     }
-    
-    // Set current session to the most recent one
-    const currentSessionId = localStorage.getItem('capycare_current_session');
-    if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) {
-        localStorage.setItem('capycare_current_session', sessions[0].id);
-    }
-    
-    updateSessionsList();
 }
 
 // Generate unique session ID
@@ -138,41 +155,34 @@ function generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Update the sessions list in the sidebar
+// Update sessions list in sidebar
 function updateSessionsList() {
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
-    const currentSessionId = localStorage.getItem('capycare_current_session');
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
     
-    // Find or create chat history container
-    let chatHistory = document.querySelector('.chat-history');
-    if (!chatHistory) {
-        chatHistory = document.createElement('div');
-        chatHistory.className = 'chat-history';
-        const sidebar = document.querySelector('.sidebar');
-        const sidebarHeader = document.querySelector('.sidebar-header');
-        sidebar.insertBefore(chatHistory, sidebarHeader.nextSibling);
-    }
+    const chatHistory = document.querySelector('.chat-history');
+    if (!chatHistory) return;
+    
+    const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
+    const currentSessionId = localStorage.getItem(`capycare_current_session_${userId}`);
     
     chatHistory.innerHTML = '';
     
     sessions.forEach(session => {
         const chatItem = document.createElement('div');
         chatItem.className = `chat-item ${session.id === currentSessionId ? 'active' : ''}`;
+        chatItem.setAttribute('data-session-id', session.id);
         
-        // Calculate message count
-        const messageCount = session.messages ? session.messages.length : 0;
-        const userMessageCount = session.messages ? session.messages.filter(msg => msg.sender === 'user').length : 0;
-        
-        // Format timestamp
         const timestamp = new Date(session.timestamp).toLocaleDateString();
+        const time = new Date(session.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         chatItem.innerHTML = `
-            <span class="chat-item-icon">💬</span>
+            <div class="chat-item-icon">💬</div>
             <div class="chat-item-content">
-                <span class="chat-item-title">${session.title}</span>
-                <span class="chat-item-meta">${userMessageCount} messages • ${timestamp}</span>
+                <div class="chat-item-title">${session.title}</div>
+                <div class="chat-item-meta">${timestamp} at ${time}</div>
             </div>
-            <button class="delete-session-btn" data-session-id="${session.id}" title="Delete chat">×</button>
+            <button class="delete-session-btn" onclick="deleteSession('${session.id}')" title="Delete session">🗑️</button>
         `;
         
         chatItem.addEventListener('click', (e) => {
@@ -183,48 +193,48 @@ function updateSessionsList() {
         
         chatHistory.appendChild(chatItem);
     });
-    
-    // Add delete session event listeners
-    document.querySelectorAll('.delete-session-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteSession(btn.dataset.sessionId);
-        });
-    });
 }
 
-// Switch to a specific chat session
+// Switch to a different chat session
 function switchToSession(sessionId) {
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
-    const session = sessions.find(s => s.id === sessionId);
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
     
-    if (session) {
-        // Save current session before switching
-        saveCurrentSession();
-        
-        // Switch to new session
-        localStorage.setItem('capycare_current_session', sessionId);
-        
-        // Load session messages
-        loadSessionMessages(session);
-        
-        // Update UI
-        updateSessionsList();
+    // Save current session before switching
+    saveCurrentSession();
+    
+    // Set new current session
+    localStorage.setItem(`capycare_current_session_${userId}`, sessionId);
+    
+    // Load the selected session
+    const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
+    const selectedSession = sessions.find(s => s.id === sessionId);
+    
+    if (selectedSession) {
+        loadSessionMessages(selectedSession);
         
         // Update chat title
         const chatTitle = document.getElementById('current-chat-title');
         if (chatTitle) {
-            chatTitle.textContent = session.title;
+            chatTitle.textContent = selectedSession.title;
         }
+        
+        // Update active session in sidebar
+        updateSessionsList();
+        
+        console.log('Switched to session:', sessionId);
     }
 }
 
 // Save current session messages
 function saveCurrentSession() {
-    const currentSessionId = localStorage.getItem('capycare_current_session');
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
+    
+    const currentSessionId = localStorage.getItem(`capycare_current_session_${userId}`);
     if (!currentSessionId) return;
     
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
     const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
     
     if (currentSessionIndex !== -1) {
@@ -258,22 +268,15 @@ function saveCurrentSession() {
         let title = 'New Chat';
         const firstUserMessage = messages.find(msg => msg.sender === 'user');
         if (firstUserMessage) {
-            title = firstUserMessage.text.substring(0, 30) + (firstUserMessage.text.length > 30 ? '...' : '');
-        } else if (messages.length > 0) {
-            // If no user message but there are bot messages, use a generic title
-            title = 'Chat ' + new Date().toLocaleDateString();
+            const text = firstUserMessage.text.replace(/<[^>]*>/g, ''); // Remove HTML tags
+            title = text.length > 30 ? text.substring(0, 30) + '...' : text;
         }
         
         sessions[currentSessionIndex].messages = messages;
         sessions[currentSessionIndex].title = title;
         sessions[currentSessionIndex].lastUpdated = Date.now();
         
-        localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
-        
-        // Log for debugging
-        console.log('Session saved:', currentSessionId);
-        console.log('Messages saved:', messages.length);
-        console.log('Session title:', title);
+        localStorage.setItem(`capycare_sessions_${userId}`, JSON.stringify(sessions));
     }
 }
 
@@ -311,79 +314,64 @@ function getWelcomeMessage() {
 
 // Delete a chat session
 function deleteSession(sessionId) {
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
-    const currentSessionId = localStorage.getItem('capycare_current_session');
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
     
-    if (sessions.length <= 1) {
-        alert('You need at least one chat session. Create a new chat first!');
-        return;
-    }
-    
-    if (confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to delete this chat session? This action cannot be undone.')) {
+        const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
         const updatedSessions = sessions.filter(s => s.id !== sessionId);
-        localStorage.setItem('capycare_sessions', JSON.stringify(updatedSessions));
         
-        // If we deleted the current session, switch to the first available one
-        if (sessionId === currentSessionId) {
-            localStorage.setItem('capycare_current_session', updatedSessions[0].id);
-            loadSessionMessages(updatedSessions[0]);
+        localStorage.setItem(`capycare_sessions_${userId}`, JSON.stringify(updatedSessions));
+        
+        // If we deleted the current session, switch to the first available session
+        const currentSessionId = localStorage.getItem(`capycare_current_session_${userId}`);
+        if (currentSessionId === sessionId) {
+            if (updatedSessions.length > 0) {
+                switchToSession(updatedSessions[0].id);
+            } else {
+                // If no sessions left, create a new one
+                initializeChatSessions();
+            }
         }
         
         updateSessionsList();
+        showNotification('Chat session deleted! 🗑️', 'success');
     }
 }
 
-// Enhanced new chat function
+// Start a new chat session
 function startNewChat() {
-    // Save current session before creating new one
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
+    
+    // Save current session
     saveCurrentSession();
     
-    // Get current sessions
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
-    const currentSessionId = localStorage.getItem('capycare_current_session');
-    
-    // Update the title of the current session before creating new one
-    if (currentSessionId) {
-        const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
-        if (currentSessionIndex !== -1) {
-            // Update title based on first user message if it exists
-            const currentSession = sessions[currentSessionIndex];
-            if (currentSession.messages && currentSession.messages.length > 0) {
-                const firstUserMessage = currentSession.messages.find(msg => msg.sender === 'user');
-                if (firstUserMessage) {
-                    currentSession.title = firstUserMessage.text.substring(0, 30) + (firstUserMessage.text.length > 30 ? '...' : '');
-                } else {
-                    currentSession.title = 'Chat ' + new Date(currentSession.timestamp).toLocaleDateString();
-                }
-            } else {
-                currentSession.title = 'Empty Chat';
-            }
-            currentSession.lastUpdated = Date.now();
-        }
-    }
-    
     // Create new session
+    const newSessionId = generateSessionId();
     const newSession = {
-        id: generateSessionId(),
+        id: newSessionId,
         title: 'New Chat',
         timestamp: Date.now(),
+        lastUpdated: Date.now(),
         messages: []
     };
     
-    // Add new session to beginning of array (most recent first)
+    // Add to sessions list
+    const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
     sessions.unshift(newSession);
-    localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+    localStorage.setItem(`capycare_sessions_${userId}`, JSON.stringify(sessions));
     
-    // Switch to new session
-    localStorage.setItem('capycare_current_session', newSession.id);
+    // Set as current session
+    localStorage.setItem(`capycare_current_session_${userId}`, newSessionId);
+    
+    // Update UI
+    updateSessionsList();
     
     // Clear chat box and show welcome message
     const chatBox = document.getElementById('chat-box');
     chatBox.innerHTML = '';
     addMessageToUI('bot', getWelcomeMessage());
-    
-    // Update UI
-    updateSessionsList();
     
     // Update chat title
     const chatTitle = document.getElementById('current-chat-title');
@@ -391,25 +379,22 @@ function startNewChat() {
         chatTitle.textContent = 'New Chat';
     }
     
-    // Show success message with session count
-    const sessionCount = sessions.length;
-    showNotification(`New chat started! You now have ${sessionCount} chat${sessionCount > 1 ? 's' : ''} in your history 🦫`, 'success');
-    
-    // Log for debugging
-    console.log('New chat created:', newSession.id);
-    console.log('Total sessions:', sessions.length);
-    console.log('Current session:', newSession.id);
+    showNotification('New chat started! 💬', 'success');
 }
 
-// Enhanced logout function
+// Logout function
 function logout() {
-    if (confirm('Are you sure you want to logout? Your chat sessions will be saved.')) {
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
+    
+    if (confirm('Are you sure you want to logout?')) {
         // Save current session before logout
         saveCurrentSession();
         
-        // Clear user data (but keep chat sessions for now)
+        // Clear user-specific data (but keep chat sessions for this user)
         localStorage.removeItem('capycare_user');
-        localStorage.removeItem('capycare_current_session');
+        localStorage.removeItem(`capycare_current_session_${userId}`);
+        localStorage.removeItem(`capycare_last_login_${userId}`);
         
         // Clear Firebase auth if available
         if (typeof firebase !== 'undefined' && firebase.auth) {
@@ -494,13 +479,16 @@ function showNotification(message, type = 'info') {
 
 // Load chat history from localStorage (updated for session management)
 function loadChatHistory() {
-    const currentSessionId = localStorage.getItem('capycare_current_session');
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
+    
+    const currentSessionId = localStorage.getItem(`capycare_current_session_${userId}`);
     if (!currentSessionId) {
         initializeChatSessions();
         return;
     }
     
-    const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+    const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
     const currentSession = sessions.find(s => s.id === currentSessionId);
     
     if (currentSession) {
@@ -514,7 +502,7 @@ function loadChatHistory() {
     } else {
         // Fallback to old method for backward compatibility
         const chatBox = document.getElementById('chat-box');
-        const savedMessages = localStorage.getItem('capycare_chat_messages');
+        const savedMessages = localStorage.getItem(`capycare_chat_messages_${userId}`);
         
         if (savedMessages) {
             try {
@@ -744,18 +732,21 @@ If recommending music, include specific song suggestions with YouTube links when
 
 // Clear current chat messages
 function clearCurrentChat() {
+    const user = JSON.parse(localStorage.getItem('capycare_user') || '{}');
+    const userId = user.uid || 'anonymous';
+    
     if (confirm('Are you sure you want to clear this chat? This will remove all messages but keep the chat session.')) {
-        const currentSessionId = localStorage.getItem('capycare_current_session');
+        const currentSessionId = localStorage.getItem(`capycare_current_session_${userId}`);
         if (!currentSessionId) return;
         
-        const sessions = JSON.parse(localStorage.getItem('capycare_sessions') || '[]');
+        const sessions = JSON.parse(localStorage.getItem(`capycare_sessions_${userId}`) || '[]');
         const currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
         
         if (currentSessionIndex !== -1) {
             // Clear messages but keep the session
             sessions[currentSessionIndex].messages = [];
             sessions[currentSessionIndex].title = 'New Chat';
-            localStorage.setItem('capycare_sessions', JSON.stringify(sessions));
+            localStorage.setItem(`capycare_sessions_${userId}`, JSON.stringify(sessions));
             
             // Clear chat box and show welcome message
             const chatBox = document.getElementById('chat-box');
