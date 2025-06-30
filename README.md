@@ -40,7 +40,7 @@ A friendly AI-powered mood tracking and mental health companion app featuring Ca
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - Gemini API key for AI functionality
 - Firebase project for authentication
-- 
+  
 ### First Time Setup
 1. Click "Begin My Capybara Adventure" on the home page
 2. Create an account or log in
